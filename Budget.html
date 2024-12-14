@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense and Income Analysis</title>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .total {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            color: white;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button[type="income"] {
+            background-color: #28a745;
+        }
+        button[type="expense"] {
+            background-color: #dc3545;
+        }
+        button[type="analysis"] {
+            background-color: #007bff;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            background: #fff;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .entry-actions button {
+            margin-left: 5px;
+            padding: 5px 10px;
+            color: white;
+            font-size: 12px;
+        }
+        .entry-actions button.edit {
+            background-color: #ffc107;
+        }
+        .entry-actions button {
+            background-color: #dc3545;
+        }
+        .entry-actions button:hover {
+            opacity: 0.8;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            .total {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .total div {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Expense and Income Analysis</h1>
+        <div class="total">
+            <div>Balance: <span id="balance">₹0</span></div>
+            <div>Total Income: <span id="totalIncome">₹0</span></div>
+            <div>Total Expenses: <span id="totalExpenses">₹0</span></div>
+        </div>
+
+        <div class="form-group">
+            <label for="type">Choose Type:</label>
+            <select id="type" onchange="updateCategories()">
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="category">Category:</label>
+            <select id="category">
+                <!-- Options will be populated dynamically -->
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="amount">Amount:</label>
+            <input type="number" id="amount" placeholder="Enter amount">
+        </div>
+
+        <button type="income" onclick="addEntry()">Add</button>
+        <button type="analysis" onclick="downloadData()">Analysis</button>
+
+        <h2>Entries</h2>
+        <ul id="entries"></ul>
+    </div>
+
+    <script>
+      const incomeCategories = ["Salary", "Borrow", "Rent", "Home Other"];
+      const expenseCategories = ["Food", "Entertainment", "Education", "Transportation", "Shopping", "Home", "Electronics", "Health", "Insurance", "Office"];
+  
+      let entries = JSON.parse(localStorage.getItem("entries")) || []; // Load from localStorage
+  
+      function updateCategories() {
+          const type = document.getElementById("type").value;
+          const categorySelect = document.getElementById("category");
+          categorySelect.innerHTML = "";
+  
+          const categories = type === "income" ? incomeCategories : expenseCategories;
+          categories.forEach(category => {
+              const option = document.createElement("option");
+              option.value = category;
+              option.textContent = category;
+              categorySelect.appendChild(option);
+          });
+      }
+  
+      function saveEntries() {
+          localStorage.setItem("entries", JSON.stringify(entries)); // Save to localStorage
+      }
+  
+      function addEntry() {
+          const type = document.getElementById("type").value;
+          const category = document.getElementById("category").value;
+          const amount = parseFloat(document.getElementById("amount").value);
+          const date = new Date().toLocaleDateString();
+  
+          if (!amount || amount <= 0) {
+              alert("Please enter a valid amount.");
+              return;
+          }
+  
+          entries.push({ type, category, amount, date });
+          saveEntries(); // Save the updated entries
+          updateTotals();
+          renderEntries();
+          document.getElementById("amount").value = "";
+      }
+  
+      function updateTotals() {
+          const totalIncome = entries
+              .filter(entry => entry.type === "income")
+              .reduce((sum, entry) => sum + entry.amount, 0);
+  
+          const totalExpenses = entries
+              .filter(entry => entry.type === "expense")
+              .reduce((sum, entry) => sum + entry.amount, 0);
+  
+          const balance = totalIncome - totalExpenses;
+  
+          document.getElementById("totalIncome").textContent = `₹${totalIncome.toFixed(2)}`;
+          document.getElementById("totalExpenses").textContent = `₹${totalExpenses.toFixed(2)}`;
+          document.getElementById("balance").textContent = `₹${balance.toFixed(2)}`;
+      }
+  
+      function renderEntries() {
+          const entriesList = document.getElementById("entries");
+          entriesList.innerHTML = "";
+  
+          entries.forEach((entry, index) => {
+              const listItem = document.createElement("li");
+              listItem.innerHTML = `${entry.date} - ${entry.type.toUpperCase()} - ${entry.category}: ₹${entry.amount}`;
+  
+              const actions = document.createElement("span");
+              actions.className = "entry-actions";
+  
+              const editButton = document.createElement("button");
+              editButton.textContent = "Edit";
+              editButton.className = "edit";
+              editButton.onclick = () => editEntry(index);
+              actions.appendChild(editButton);
+  
+              const deleteButton = document.createElement("button");
+              deleteButton.textContent = "Remove";
+              deleteButton.onclick = () => removeEntry(index);
+              actions.appendChild(deleteButton);
+  
+              listItem.appendChild(actions);
+              entriesList.appendChild(listItem);
+          });
+      }
+  
+      function editEntry(index) {
+          const entry = entries[index];
+          document.getElementById("type").value = entry.type;
+          updateCategories();
+          document.getElementById("category").value = entry.category;
+          document.getElementById("amount").value = entry.amount;
+  
+          entries.splice(index, 1);
+          saveEntries(); // Update localStorage
+          updateTotals();
+          renderEntries();
+      }
+  
+      function removeEntry(index) {
+          entries.splice(index, 1);
+          saveEntries(); // Update localStorage
+          updateTotals();
+          renderEntries();
+      }
+  
+      function downloadData() {
+          const incomeEntries = entries.filter(entry => entry.type === "income");
+          const expenseEntries = entries.filter(entry => entry.type === "expense");
+  
+          const summary = [
+              ["Summary"],
+              ["Total Income", `₹${incomeEntries.reduce((sum, entry) => sum + entry.amount, 0).toFixed(2)}`],
+              ["Total Expenses", `₹${expenseEntries.reduce((sum, entry) => sum + entry.amount, 0).toFixed(2)}`],
+              ["Balance", `₹${(incomeEntries.reduce((sum, entry) => sum + entry.amount, 0) - expenseEntries.reduce((sum, entry) => sum + entry.amount, 0)).toFixed(2)}`]
+          ];
+  
+          const incomeData = [["Date", "Category", "Amount"], ...incomeEntries.map(entry => [entry.date, entry.category, `₹${entry.amount}`])];
+          const expenseData = [["Date", "Category", "Amount"], ...expenseEntries.map(entry => [entry.date, entry.category, `₹${entry.amount}`])];
+  
+          const worksheet = XLSX.utils.book_new();
+  
+          XLSX.utils.book_append_sheet(worksheet, XLSX.utils.aoa_to_sheet(summary), "Summary");
+          XLSX.utils.book_append_sheet(worksheet, XLSX.utils.aoa_to_sheet(incomeData), "Income");
+          XLSX.utils.book_append_sheet(worksheet, XLSX.utils.aoa_to_sheet(expenseData), "Expenses");
+  
+          XLSX.writeFile(worksheet, "Expense_Income_Analysis.xlsx");
+      }
+  
+      // Initialize the application
+      updateCategories();
+      updateTotals();
+      renderEntries();
+  </script>
+  
+</body>
+</html>
