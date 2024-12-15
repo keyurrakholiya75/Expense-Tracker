@@ -3,28 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense and Income Analysis</title>
+    <title>Personal Expense Tracker</title>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            background-color: #f0f2f5;
+            color: #333;
         }
         .container {
             max-width: 600px;
-            margin: 20px auto;
+            margin: 40px auto;
             padding: 20px;
-            border: 1px solid #ddd;
             border-radius: 8px;
-            background-color: #f9f9f9;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #007bff;
         }
         .total {
             display: flex;
             justify-content: space-between;
             margin-bottom: 20px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
         }
         .form-group {
             margin-bottom: 15px;
@@ -32,33 +41,71 @@
         .form-group label {
             display: block;
             margin-bottom: 5px;
+            font-weight: bold;
         }
         select, input {
             width: 100%;
             padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
+            border: 1px solid #ced4da;
             border-radius: 5px;
-            box-sizing: border-box;
+            margin-bottom: 10px;
         }
         button {
-            padding: 10px 15px;
+            padding: 12px 15px;
             border: none;
             cursor: pointer;
             border-radius: 5px;
-            color: white;
-        }
-        button:hover {
-            opacity: 0.9;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            transition: background-color 0.3s ease;
         }
         button[type="income"] {
             background-color: #28a745;
         }
+        button[type="income"]:hover {
+            background-color: #218838;
+        }
         button[type="expense"] {
             background-color: #dc3545;
         }
+        button[type="expense"]:hover {
+            background-color: #c82333;
+        }
         button[type="analysis"] {
             background-color: #007bff;
+        }
+        button[type="analysis"]:hover {
+            background-color: #0056b3;
+        }
+        button[type="chart"] {
+            background-color: #17a2b8;
+        }
+        button[type="chart"]:hover {
+            background-color: #117a8b;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .entries-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .entries-list {
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+        .entries-list h3 {
+            margin: 0;
+            margin-bottom: 10px;
+            color: #007bff;
         }
         ul {
             list-style: none;
@@ -68,7 +115,7 @@
             background: #fff;
             margin: 10px 0;
             padding: 10px;
-            border: 1px solid #ddd;
+            border: 1px solid #dee2e6;
             border-radius: 5px;
             display: flex;
             justify-content: space-between;
@@ -83,35 +130,68 @@
         .entry-actions button.edit {
             background-color: #ffc107;
         }
-        .entry-actions button {
+        .entry-actions button.edit:hover {
+            background-color: #e0a800;
+        }
+        .entry-actions button.remove {
             background-color: #dc3545;
         }
-        .entry-actions button:hover {
-            opacity: 0.8;
+        .entry-actions button.remove:hover {
+            background-color: #c82333;
         }
-
-        /* Responsive adjustments */
-        @media (max-width: 600px) {
-            .container {
-                padding: 10px;
-            }
-            .total {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .total div {
-                margin-bottom: 10px;
-            }
+        #chartModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            display: none;
         }
+        #chartContainer {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+            position: relative;
+        }
+        #chart {
+            width: 100%;
+            height: 400px;
+        }
+        /* Updated close button styles */
+        #chartModal button {
+            background-color: #dc3545; /* Red for visibility */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #chartModal button:hover {
+            background-color: #b3242b; /* Darker red for hover effect */
+        }        
+        
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Expense and Income Analysis</h1>
+        <button type="chart" onclick="showChart()">Chart</button>
+        <h1>Personal Expense Tracker</h1>
         <div class="total">
-            <div>Balance: <span id="balance">₹0</span></div>
-            <div>Total Income: <span id="totalIncome">₹0</span></div>
-            <div>Total Expenses: <span id="totalExpenses">₹0</span></div>
+            <div>Balance: <span id="balance">&#8377;0</span></div>
+            <div>Total Income: <span id="totalIncome">&#8377;0</span></div>
+            <div>Total Expenses: <span id="totalExpenses">&#8377;0</span></div>
         </div>
 
         <div class="form-group">
@@ -134,146 +214,236 @@
             <input type="number" id="amount" placeholder="Enter amount">
         </div>
 
-        <button type="income" onclick="addEntry()">Add</button>
-        <button type="analysis" onclick="downloadData()">Analysis</button>
+        <div class="form-group">
+            <label for="comment">Comment:</label>
+            <input type="text" id="comment" placeholder="Add a comment (e.g., where, why, etc.)">
+        </div>
 
-        <h2>Entries</h2>
-        <ul id="entries"></ul>
+        <div class="button-group">
+            <button type="income" onclick="addEntry()">Add</button>
+            <button type="analysis" onclick="downloadData()">Download Analysis</button>
+        </div>
+
+        <div class="entries-section">
+            <div class="entries-list">
+                <h3>Income Entries</h3>
+                <ul id="incomeEntries"></ul>
+            </div>
+            <div class="entries-list">
+                <h3>Expense Entries</h3>
+                <ul id="expenseEntries"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="chartModal">
+        <div id="chartContainer">
+            <canvas id="chart"></canvas>
+            <button onclick="closeChart()">Close</button>
+        </div>
     </div>
 
     <script>
-      const incomeCategories = ["Salary", "Borrow", "Rent", "Home Other"];
-      const expenseCategories = ["Food", "Entertainment", "Education", "Transportation", "Shopping", "Home", "Electronics", "Health", "Insurance", "Office"];
-  
-      let entries = JSON.parse(localStorage.getItem("entries")) || []; // Load from localStorage
-  
-      function updateCategories() {
-          const type = document.getElementById("type").value;
-          const categorySelect = document.getElementById("category");
-          categorySelect.innerHTML = "";
-  
-          const categories = type === "income" ? incomeCategories : expenseCategories;
-          categories.forEach(category => {
-              const option = document.createElement("option");
-              option.value = category;
-              option.textContent = category;
-              categorySelect.appendChild(option);
-          });
-      }
-  
-      function saveEntries() {
-          localStorage.setItem("entries", JSON.stringify(entries)); // Save to localStorage
-      }
-  
-      function addEntry() {
-          const type = document.getElementById("type").value;
-          const category = document.getElementById("category").value;
-          const amount = parseFloat(document.getElementById("amount").value);
-          const date = new Date().toLocaleDateString();
-  
-          if (!amount || amount <= 0) {
-              alert("Please enter a valid amount.");
-              return;
-          }
-  
-          entries.push({ type, category, amount, date });
-          saveEntries(); // Save the updated entries
-          updateTotals();
-          renderEntries();
-          document.getElementById("amount").value = "";
-      }
-  
-      function updateTotals() {
-          const totalIncome = entries
-              .filter(entry => entry.type === "income")
-              .reduce((sum, entry) => sum + entry.amount, 0);
-  
-          const totalExpenses = entries
-              .filter(entry => entry.type === "expense")
-              .reduce((sum, entry) => sum + entry.amount, 0);
-  
-          const balance = totalIncome - totalExpenses;
-  
-          document.getElementById("totalIncome").textContent = `₹${totalIncome.toFixed(2)}`;
-          document.getElementById("totalExpenses").textContent = `₹${totalExpenses.toFixed(2)}`;
-          document.getElementById("balance").textContent = `₹${balance.toFixed(2)}`;
-      }
-  
-      function renderEntries() {
-          const entriesList = document.getElementById("entries");
-          entriesList.innerHTML = "";
-  
-          entries.forEach((entry, index) => {
-              const listItem = document.createElement("li");
-              listItem.innerHTML = `${entry.date} - ${entry.type.toUpperCase()} - ${entry.category}: ₹${entry.amount}`;
-  
-              const actions = document.createElement("span");
-              actions.className = "entry-actions";
-  
-              const editButton = document.createElement("button");
-              editButton.textContent = "Edit";
-              editButton.className = "edit";
-              editButton.onclick = () => editEntry(index);
-              actions.appendChild(editButton);
-  
-              const deleteButton = document.createElement("button");
-              deleteButton.textContent = "Remove";
-              deleteButton.onclick = () => removeEntry(index);
-              actions.appendChild(deleteButton);
-  
-              listItem.appendChild(actions);
-              entriesList.appendChild(listItem);
-          });
-      }
-  
-      function editEntry(index) {
-          const entry = entries[index];
-          document.getElementById("type").value = entry.type;
-          updateCategories();
-          document.getElementById("category").value = entry.category;
-          document.getElementById("amount").value = entry.amount;
-  
-          entries.splice(index, 1);
-          saveEntries(); // Update localStorage
-          updateTotals();
-          renderEntries();
-      }
-  
-      function removeEntry(index) {
-          entries.splice(index, 1);
-          saveEntries(); // Update localStorage
-          updateTotals();
-          renderEntries();
-      }
-  
-      function downloadData() {
-          const incomeEntries = entries.filter(entry => entry.type === "income");
-          const expenseEntries = entries.filter(entry => entry.type === "expense");
-  
-          const summary = [
-              ["Summary"],
-              ["Total Income", `₹${incomeEntries.reduce((sum, entry) => sum + entry.amount, 0).toFixed(2)}`],
-              ["Total Expenses", `₹${expenseEntries.reduce((sum, entry) => sum + entry.amount, 0).toFixed(2)}`],
-              ["Balance", `₹${(incomeEntries.reduce((sum, entry) => sum + entry.amount, 0) - expenseEntries.reduce((sum, entry) => sum + entry.amount, 0)).toFixed(2)}`]
-          ];
-  
-          const incomeData = [["Date", "Category", "Amount"], ...incomeEntries.map(entry => [entry.date, entry.category, `₹${entry.amount}`])];
-          const expenseData = [["Date", "Category", "Amount"], ...expenseEntries.map(entry => [entry.date, entry.category, `₹${entry.amount}`])];
-  
-          const worksheet = XLSX.utils.book_new();
-  
-          XLSX.utils.book_append_sheet(worksheet, XLSX.utils.aoa_to_sheet(summary), "Summary");
-          XLSX.utils.book_append_sheet(worksheet, XLSX.utils.aoa_to_sheet(incomeData), "Income");
-          XLSX.utils.book_append_sheet(worksheet, XLSX.utils.aoa_to_sheet(expenseData), "Expenses");
-  
-          XLSX.writeFile(worksheet, "Expense_Income_Analysis.xlsx");
-      }
-  
-      // Initialize the application
-      updateCategories();
-      updateTotals();
-      renderEntries();
-  </script>
-  
+        const incomeCategories = ["Salary", "Borrow", "Rent", "Home Other"];
+        const expenseCategories = ["Food", "Entertainment", "Education", "Transportation", "Shopping", "Home", "Electronics", "Health", "Insurance", "Office"];
+
+        let entries = JSON.parse(localStorage.getItem("entries")) || []; // Load from localStorage
+
+        function updateCategories() {
+            const type = document.getElementById("type").value;
+            const categorySelect = document.getElementById("category");
+            categorySelect.innerHTML = "";
+
+            const categories = type === "income" ? incomeCategories : expenseCategories;
+            categories.forEach(category => {
+                const option = document.createElement("option");
+                option.value = category;
+                option.textContent = category;
+                categorySelect.appendChild(option);
+            });
+        }
+        function saveEntries() {
+            localStorage.setItem("entries", JSON.stringify(entries)); // Save to localStorage
+        }
+
+        function addEntry() {
+            const type = document.getElementById("type").value;
+            const category = document.getElementById("category").value;
+            const amount = parseFloat(document.getElementById("amount").value);
+            const comment = document.getElementById("comment").value.trim();
+            const date = new Date().toLocaleDateString();
+
+            if (!amount || amount <= 0) {
+                alert("Please enter a valid amount.");
+                return;
+            }
+
+            entries.push({ type, category, amount, comment, date });
+            saveEntries();
+            updateTotals();
+            renderEntries();
+            document.getElementById("amount").value = "";
+            document.getElementById("comment").value = "";
+        }
+
+        function updateTotals() {
+            const totalIncome = entries
+                .filter(entry => entry.type === "income")
+                .reduce((sum, entry) => sum + entry.amount, 0);
+
+            const totalExpenses = entries
+                .filter(entry => entry.type === "expense")
+                .reduce((sum, entry) => sum + entry.amount, 0);
+
+            const balance = totalIncome - totalExpenses;
+
+            document.getElementById("totalIncome").textContent = `₹${totalIncome.toFixed(2)}`;
+            document.getElementById("totalExpenses").textContent = `₹${totalExpenses.toFixed(2)}`;
+            document.getElementById("balance").textContent = `₹${balance.toFixed(2)}`;
+        }
+
+        function renderEntries() {
+            const incomeList = document.getElementById("incomeEntries");
+            const expenseList = document.getElementById("expenseEntries");
+            incomeList.innerHTML = "";
+            expenseList.innerHTML = "";
+
+            entries.forEach((entry, index) => {
+                const listItem = document.createElement("li");
+                listItem.innerHTML = `${entry.date} - ${entry.category}: ₹${entry.amount}<br>Comment: ${entry.comment || "N/A"}`;
+
+                const actions = document.createElement("span");
+                actions.className = "entry-actions";
+
+                const editButton = document.createElement("button");
+                editButton.textContent = "Edit";
+                editButton.className = "edit";
+                editButton.onclick = () => editEntry(index);
+                actions.appendChild(editButton);
+
+                const deleteButton = document.createElement("button");
+                deleteButton.textContent = "Remove";
+                deleteButton.className = "remove";
+                deleteButton.onclick = () => removeEntry(index);
+                actions.appendChild(deleteButton);
+
+                listItem.appendChild(actions);
+
+                if (entry.type === "income") {
+                    incomeList.appendChild(listItem);
+                } else {
+                    expenseList.appendChild(listItem);
+                }
+            });
+        }
+
+        function editEntry(index) {
+            const entry = entries[index];
+            document.getElementById("type").value = entry.type;
+            updateCategories();
+            document.getElementById("category").value = entry.category;
+            document.getElementById("amount").value = entry.amount;
+            document.getElementById("comment").value = entry.comment;
+
+            entries.splice(index, 1);
+            saveEntries();
+            updateTotals();
+            renderEntries();
+        }
+
+        function removeEntry(index) {
+            entries.splice(index, 1);
+            saveEntries();
+            updateTotals();
+            renderEntries();
+        }
+
+        function showChart() {
+            const chartModal = document.getElementById("chartModal");
+            chartModal.style.display = "flex";
+
+            const ctx = document.getElementById("chart").getContext("2d");
+
+            const incomeTotal = entries.filter(e => e.type === "income").reduce((sum, e) => sum + e.amount, 0);
+            const expenseTotal = entries.filter(e => e.type === "expense").reduce((sum, e) => sum + e.amount, 0);
+
+            new Chart(ctx, {
+                type: "pie",
+                data: {
+                    labels: ["Income", "Expense"],
+                    datasets: [{
+                        data: [incomeTotal, expenseTotal],
+                        backgroundColor: ["#28a745", "#dc3545"]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: "top"
+                        }
+                    }
+                }
+            });
+        }
+
+        function closeChart() {
+            const chartModal = document.getElementById("chartModal");
+            chartModal.style.display = "none";
+        }
+
+        function downloadData() {
+            const workbook = XLSX.utils.book_new();
+        
+            // Income Section
+            const incomeEntries = entries.filter(e => e.type === "income");
+            const incomeSheetData = [["Category", "Amount", "Comment", "Date"]];
+            incomeEntries.forEach(entry => {
+                incomeSheetData.push([entry.category, entry.amount, entry.comment, entry.date]);
+            });
+            const incomeSheet = XLSX.utils.aoa_to_sheet(incomeSheetData);
+            XLSX.utils.book_append_sheet(workbook, incomeSheet, "Income");
+        
+            // Expense Section
+            const expenseEntries = entries.filter(e => e.type === "expense");
+            const expenseSheetData = [["Category", "Amount", "Comment", "Date"]];
+            expenseEntries.forEach(entry => {
+                expenseSheetData.push([entry.category, entry.amount, entry.comment, entry.date]);
+            });
+            const expenseSheet = XLSX.utils.aoa_to_sheet(expenseSheetData);
+            XLSX.utils.book_append_sheet(workbook, expenseSheet, "Expenses");
+        
+            // Summary Section
+            const incomeTotal = incomeEntries.reduce((sum, e) => sum + e.amount, 0);
+            const expenseTotal = expenseEntries.reduce((sum, e) => sum + e.amount, 0);
+            const balance = incomeTotal - expenseTotal;
+        
+            const summarySheetData = [
+                ["Summary"],
+                ["Total Income", incomeTotal],
+                ["Total Expenses", expenseTotal],
+                ["Balance", balance],
+            ];
+            const summarySheet = XLSX.utils.aoa_to_sheet(summarySheetData);
+        
+            // Adding Chart Data for the Summary
+            //const chartData = [
+              //  ["Category", "Amount"],
+                //["Income", incomeTotal],
+               // ["Expenses", expenseTotal],
+            //];
+           // XLSX.utils.sheet_add_aoa(summarySheet, [[""], ["Chart Data:"], ...chartData], { origin: -1 });
+        
+            XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
+        
+            // Export the Workbook
+            XLSX.writeFile(workbook, "Income_Expense_Analysis.xlsx");
+        }
+        
+        // Initial setup
+        updateCategories();
+        updateTotals();
+        renderEntries();
+    </script>
 </body>
 </html>
